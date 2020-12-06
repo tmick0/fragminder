@@ -1,11 +1,16 @@
 from .commands import process_command
 from .database import fmdb
 from .steam_utils import steamapi
+from .async_utils import recurring_task
+from .update import do_update
 
 import argparse
 import asyncio
 import configparser
 import discord
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 class fragminder (discord.Client):
     def __init__(self, config):
@@ -14,10 +19,13 @@ class fragminder (discord.Client):
         self.ready = False
 
     async def on_ready(self):
-        self.db = await fmdb.open(self.conf['database_file'])
-        self.steam = steamapi(self.conf['steam_api_key'])
-        self.ready = True
-        print('ready: {}'.format(self.user))
+        loop = asyncio.get_event_loop()
+        if not self.ready:
+            self.db = await fmdb.open(self.conf['database_file'])
+            self.steam = steamapi(self.conf['steam_api_key'])
+            self._user_poller = recurring_task(float(self.conf['user_poll_interval']), do_update, self)
+            self.ready = True
+            await self._user_poller.start()
     
     async def on_message(self, message):
         if not self.ready: # ignore messages received before we're ready
@@ -27,14 +35,13 @@ class fragminder (discord.Client):
         prefix = self.conf['command_prefix']
         if message.content.startswith(prefix):
             text = message.content[len(prefix):]
-            result = await process_command(self, message.author, text)
+            result = await process_command(self, message, text)
             if result is None:
                 result = {'react': '\U0001f937'} # shrug
             if 'reply' in result:
                 await message.channel.send("{}: {}".format(message.author.mention, result['reply']))
             if 'react' in result:
                 await message.add_reaction(result['react'])
-
 
     def run(self):
         super().run(self.conf['discord_token'])

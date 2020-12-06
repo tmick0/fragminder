@@ -16,24 +16,26 @@ def cmd(name):
     return decorator
 
 
-async def process_command(ctx, who, message):
+async def process_command(ctx, msg, message):
     cmd, *args = message.split(" ")
     # TODO: handle undefined command
     # TODO: handle exceptions
     if cmd in COMMANDS:
-        return await COMMANDS[cmd](ctx, who, *args)
+        return await COMMANDS[cmd](ctx, msg, *args)
         
 
 @cmd("register")
-async def register(ctx, who, steam_url):
+async def register(ctx, msg, steam_url):
     """ * desc: tell me who you are
         * args: steam_profile_url
         * example: https://steamcommunity.com/id/ql0000/
         * tip: do this first!
     """
+    # TODO: handle bot receiving dm (guild will be null)
     # TODO: handle case where user is already registered
     # TODO: handle failure to resolve steam id
-    await ctx.db.add_user(who.id, await ctx.steam.get_user_id(steam_url))
+    await ctx.db.add_or_update_guild(msg.guild.id)
+    await ctx.db.add_user(msg.guild.id, msg.author.id, await ctx.steam.get_user_id(steam_url))
     return {
         'react': '\U0001F389',
         'reply': 'welcome to the party!!!111'
@@ -41,7 +43,7 @@ async def register(ctx, who, steam_url):
 
 
 @cmd("weapon")
-async def weapon(ctx, who, inspect_url, *name):
+async def weapon(ctx, msg, inspect_url, *name):
     """ * desc: track a new stattrak item
         * args: inspect_url item_name...
         * example: steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S76561198116123325A17495329572D2918438303529470971 my fancy ak
@@ -52,9 +54,10 @@ async def weapon(ctx, who, inspect_url, *name):
     match = inspect_url_regex.match(inspect_url)
     if match:
         asset = int(match[1])
+        # TODO: handle bot receiving dm (guild will be null)
         # TODO: handle get_user_id failure (user not registered)
         # TODO: verify that the item is in the user's inventory and is stattrak
-        uid = await ctx.db.get_user_id(who.id)
+        uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
         await ctx.db.add_weapon(uid, asset, name)
         return {'react': '\U0001F44D'}
     else: # poorly formatted inspect url
@@ -62,24 +65,41 @@ async def weapon(ctx, who, inspect_url, *name):
 
 
 @cmd("watch")
-async def watch(ctx, who, count, *name):
+async def watch(ctx, msg, count, *name):
     """ * desc: set a stattrak count to watch for
         * args: number item_name...
         * example: 6969 my fancy ak
         * tip: you can add multiple watches for an item
     """
     name = " ".join(name)
+    # TODO: handle bot receiving dm (guild will be null)
     # TODO: handle get_user_id failure (user not registered)
     # TODO: handle get_weapon_id failure (weapon not added)
     # TODO: handle requested count <= current count
-    uid = await ctx.db.get_user_id(who.id)
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_weapon_id(uid, name)
     await ctx.db.add_watch(wid, int(count))
     return {'react': '\U0001F44D'}
 
 
+@cmd("setchannel")
+async def setchannel(ctx, msg, *args):
+    """ * desc: set the channel for me to send alerts in (admin)
+        * tip: just send this command in the desired channel
+    """
+    channel = msg.channel
+    guild = channel.guild
+    perms = msg.author.permissions_in(channel)
+
+    if not perms.administrator:
+        return {'react': '\U0001F44E'}
+    
+    await ctx.db.add_or_update_guild(guild.id, channel.id)
+    return {'react': '\U0001F44D'}
+
+
 @cmd("help")
-async def help(ctx, who, *key):
+async def help(ctx, msg, *key):
     """ * desc: (psst, you're already here!)
         * args: [command]
     """
@@ -99,7 +119,7 @@ i'm a bot that reminds you when your stattrak stuff is about to reach a cool num
 
 {}
 
-protip: try {}help <command> for help on a specific command
+protip: try `{}help <command>` for help on a specific command
 """.format('\n'.join(all_commands), ctx.conf['command_prefix'])
         }
     else:

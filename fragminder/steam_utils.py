@@ -12,15 +12,21 @@ class steamapi(object):
     def __init__(self, api_key):
         self._key = api_key
 
-    def _build_inventory_url(self, user_id, last_assetid=""):
-        page_limit = 100
-        return 'https://steamcommunity.com/inventory/{:d}/{:d}/2?l=english&count={:d}&start_assetid={}'.format(user_id, self._gameid, page_limit, last_assetid)
+    def _build_inventory_url(self, user_id, last_assetid=None):
+        page_limit = 1000
+        url = 'https://steamcommunity.com/inventory/{:d}/{:d}/2?l=english&count={:d}'.format(user_id, self._gameid, page_limit)
+        if last_assetid:
+            url += '&start_assetid={}'.format(last_assetid)
+        return url
 
     def _build_summaries_url(self, user_ids):
         return 'http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}&format=json'.format(self._key, ";".join(map(str, user_ids)))
 
     def _build_resolve_url(self, vanityurl):
         return 'https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key={}&vanityurl={}&url_type=1'.format(self._key, vanityurl)
+
+    def _build_item_preview_url(self, icon):
+        return 'https://steamcommunity-a.akamaihd.net/economy/image/{}/330x192'.format(icon)
 
     async def get_active_players(self, user_ids):
         loop = asyncio.get_event_loop()
@@ -39,9 +45,9 @@ class steamapi(object):
                     res.append(int(p['steamid']))
         return res
 
-    async def get_item_counts(self, user_id, asset_ids):
+    async def get_items_info(self, user_id, asset_ids):
         loop = asyncio.get_event_loop()
-        last_asset_id = ""
+        last_asset_id = None
 
         result = {}
         while True:
@@ -52,7 +58,6 @@ class steamapi(object):
             data = r.json()
             if not 'assets' in data: # reached end
                 break
-            last_asset_id = data["assets"][-1]["assetid"]
 
             # we have to map the 'assets' list to the 'descriptions' list via the (classid, instanceid) tuple
             # the asset dict contains the assetid which we obtained from the inspect url, while descriptions has everything else we need
@@ -65,13 +70,21 @@ class steamapi(object):
                 key = (item["classid"], item["instanceid"])
                 if not key in keys: # this is not one of the requested items
                     continue
-                #print(item)
                 for desc in item['descriptions']:
                     if desc['value'].startswith('StatTrak'):
-                        result[keys[key]] = int(desc['value'].split(' ')[-1])
+                        result[keys[key]] = {
+                            'stattrak': int(desc['value'].split(' ')[-1]),
+                            'name': item['name'],
+                            'image': self._build_item_preview_url(item['icon_url'])
+                        }
                         break
                 else: # the item is not stattrak
                     continue
+            
+            if 'more_items' in data and data['more_items']:
+                last_asset_id = data['last_asset_id']
+            else:
+                break
 
         return result
 
