@@ -89,7 +89,7 @@ async def do_update(ctx):
                             continue
 
                         # determine the last alert we would have sent
-                        last_delta = a.last_count - data['stattrak']
+                        last_delta = watch_count - a.last_count
                         try:
                             last_alert = [a for a in alert_deltas if a >= last_delta][-1]
                         except IndexError:
