@@ -33,7 +33,7 @@ async def register(ctx, who, steam_url):
     """
     # TODO: handle case where user is already registered
     # TODO: handle failure to resolve steam id
-    await ctx.db.add_user(str(who), await ctx.steam.get_user_id(steam_url))
+    await ctx.db.add_user(who.id, await ctx.steam.get_user_id(steam_url))
     return None
 
 
@@ -51,7 +51,7 @@ async def weapon(ctx, who, inspect_url, *name):
         asset = int(match[1])
         # TODO: handle get_user_id failure (user not registered)
         # TODO: verify that the item is in the user's inventory and is stattrak
-        uid = await ctx.db.get_user_id(str(who))
+        uid = await ctx.db.get_user_id(who.id)
         await ctx.db.add_weapon(uid, asset, name)
     else: # poorly formatted inspect url
         return None
@@ -68,7 +68,7 @@ async def watch(ctx, who, count, *name):
     # TODO: handle get_user_id failure (user not registered)
     # TODO: handle get_weapon_id failure (weapon not added)
     # TODO: handle requested count <= current count
-    uid = await ctx.db.get_user_id(str(who))
+    uid = await ctx.db.get_user_id(who.id)
     wid = await ctx.db.get_weapon_id(uid, name)
     await ctx.db.add_watch(wid, int(count))
 

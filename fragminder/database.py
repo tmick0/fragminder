@@ -21,7 +21,7 @@ class fmdb (object):
         await self._conn.execute("""
             create table if not exists user_t (
                 user_id integer primary key autoincrement,
-                discord_name text unique not null,
+                discord_id integer unique not null,
                 steam_id integer not null
             )
         """)
@@ -50,8 +50,8 @@ class fmdb (object):
 
         await self._conn.commit()
 
-    async def add_user(self, discord_name, steam_id):
-        await self._conn.execute("insert into user_t (discord_name, steam_id) values (?, ?)", (discord_name, steam_id))
+    async def add_user(self, discord_id, steam_id):
+        await self._conn.execute("insert into user_t (discord_id, steam_id) values (?, ?)", (discord_id, steam_id))
         await self._conn.commit()
 
     async def add_weapon(self, user_id, asset_id, name):
@@ -69,8 +69,8 @@ class fmdb (object):
                 res.append((row['user_id'], row['discord_name'], row['steam_id']))
         return res
 
-    async def get_user_id(self, discord_name):
-        async with self._conn.execute("select * from user_t where discord_name = ?", (discord_name,)) as c:
+    async def get_user_id(self, discord_id):
+        async with self._conn.execute("select * from user_t where discord_id = ?", (discord_id,)) as c:
             async for row in c:
                 return row['user_id']
         return None
