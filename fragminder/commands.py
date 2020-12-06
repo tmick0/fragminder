@@ -64,6 +64,23 @@ async def weapon(ctx, msg, inspect_url, *name):
         return {'react': '\U0001F44E'}
 
 
+@cmd("weapons")
+async def weapons(ctx, msg, *args):
+    """ * desc: show the weapons you've registered with me
+    """
+    
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    weapons = await ctx.db.get_user_weapons(uid)
+
+    if len(weapons) == 0:
+        return {'reply': "you haven't registered weapons, type `{}help weapon` to find out how".format(ctx.conf['command_prefix'])}
+
+    msg = ""
+    for _, name, last_count in weapons:
+        msg += '\n * `{}` (last count: {})'.format(name, last_count)
+
+    return {'reply': msg}
+
 @cmd("watch")
 async def watch(ctx, msg, count, *name):
     """ * desc: set a stattrak count to watch for

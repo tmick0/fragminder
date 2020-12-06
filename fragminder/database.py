@@ -107,7 +107,7 @@ class fmdb (object):
         res = []
         async with self._conn.execute("select * from weapon_t where user_id = ?", (user_id,)) as c:
             async for row in c:
-                res.append((row['weapon_id'], row['name']))
+                res.append((row['weapon_id'], row['name'], row['last_count']))
         return res
 
     async def get_user_watches(self, user_id):
