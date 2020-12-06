@@ -1,5 +1,6 @@
 from .commands import process_command
 from .database import fmdb
+from .steam_utils import steamapi
 
 import argparse
 import asyncio
@@ -14,6 +15,7 @@ class fragminder (discord.Client):
 
     async def on_ready(self):
         self.db = await fmdb.open(self.conf['database_file'])
+        self.steam = steamapi(self.conf['steam_api_key'])
         self.ready = True
         print('ready: {}'.format(self.user))
     

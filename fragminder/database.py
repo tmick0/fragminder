@@ -31,7 +31,7 @@ class fmdb (object):
                 weapon_id integer primary key autoincrement,
                 user_id integer not null,
                 name text not null,
-                asset_id text not null unique,
+                asset_id integer not null unique,
                 last_check integer null,
                 foreign key (user_id) references user_t (user_id),
                 unique (user_id, name)
