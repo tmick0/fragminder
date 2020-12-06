@@ -34,7 +34,10 @@ async def register(ctx, who, steam_url):
     # TODO: handle case where user is already registered
     # TODO: handle failure to resolve steam id
     await ctx.db.add_user(who.id, await ctx.steam.get_user_id(steam_url))
-    return None
+    return {
+        'react': '\U0001F389',
+        'reply': 'welcome to the party!!!111'
+    }
 
 
 @cmd("weapon")
@@ -53,8 +56,9 @@ async def weapon(ctx, who, inspect_url, *name):
         # TODO: verify that the item is in the user's inventory and is stattrak
         uid = await ctx.db.get_user_id(who.id)
         await ctx.db.add_weapon(uid, asset, name)
+        return {'react': '\U0001F44D'}
     else: # poorly formatted inspect url
-        return None
+        return {'react': '\U0001F44E'}
 
 
 @cmd("watch")
@@ -71,7 +75,7 @@ async def watch(ctx, who, count, *name):
     uid = await ctx.db.get_user_id(who.id)
     wid = await ctx.db.get_weapon_id(uid, name)
     await ctx.db.add_watch(wid, int(count))
-
+    return {'react': '\U0001F44D'}
 
 
 @cmd("help")
