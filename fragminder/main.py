@@ -20,12 +20,21 @@ class fragminder (discord.Client):
         print('ready: {}'.format(self.user))
     
     async def on_message(self, message):
-        if not self.ready:
+        if not self.ready: # ignore messages received before we're ready
+            return
+        if message.author == self.user: # ignore self
             return
         prefix = self.conf['command_prefix']
         if message.content.startswith(prefix):
             text = message.content[len(prefix):]
-            await process_command(self, message.author, text)
+            result = await process_command(self, message.author, text)
+            if result is None:
+                result = {'react': '\U0001f937'} # shrug
+            if 'reply' in result:
+                await message.channel.send("{}: {}".format(message.author.mention, result['reply']))
+            if 'react' in result:
+                await message.add_reaction(result['react'])
+
 
     def run(self):
         super().run(self.conf['discord_token'])
