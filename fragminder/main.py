@@ -3,6 +3,7 @@ from .database import fmdb
 from .steam_utils import steamapi
 from .async_utils import recurring_task
 from .update import do_update
+from . import emoji
 
 import argparse
 import asyncio
@@ -43,7 +44,7 @@ class fragminder (discord.Client):
                 result = None
 
             if result is None:
-                result = {'react': '\U0001f937'} # shrug
+                result = {'react': emoji.shrug}
             if 'reply' in result:
                 await message.channel.send("{}: {}".format(message.author.mention, result['reply']))
             if 'react' in result:

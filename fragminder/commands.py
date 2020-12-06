@@ -1,5 +1,6 @@
 from .steam_utils import *
 from .help import format_help
+from . import emoji
 
 import re
 
@@ -37,7 +38,7 @@ async def register(ctx, msg, steam_url):
     await ctx.db.add_or_update_guild(msg.guild.id)
     await ctx.db.add_user(msg.guild.id, msg.author.id, await ctx.steam.get_user_id(steam_url))
     return {
-        'react': '\U0001F389',
+        'react': emoji.party,
         'reply': 'welcome to the party!!!111'
     }
 
@@ -59,9 +60,9 @@ async def weapon(ctx, msg, inspect_url, *name):
         # TODO: verify that the item is in the user's inventory and is stattrak
         uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
         await ctx.db.add_weapon(uid, asset, name)
-        return {'react': '\U0001F44D'}
+        return {'react': emoji.thumbsup}
     else: # poorly formatted inspect url
-        return {'react': '\U0001F44E'}
+        return {'react': emoji.thumbsdown}
 
 
 @cmd("weapons")
@@ -96,7 +97,7 @@ async def watch(ctx, msg, count, *name):
     uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_weapon_id(uid, name)
     await ctx.db.add_watch(wid, int(count))
-    return {'react': '\U0001F44D'}
+    return {'react': emoji.thumbsup}
 
 
 @cmd("setchannel")
@@ -109,10 +110,10 @@ async def setchannel(ctx, msg, *args):
     perms = msg.author.permissions_in(channel)
 
     if not perms.administrator:
-        return {'react': '\U0001F44E'}
+        return {'react': emoji.thumbsdown}
     
     await ctx.db.add_or_update_guild(guild.id, channel.id)
-    return {'react': '\U0001F44D'}
+    return {'react': emoji.thumbsup}
 
 
 @cmd("help")
