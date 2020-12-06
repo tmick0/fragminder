@@ -35,7 +35,13 @@ class fragminder (discord.Client):
         prefix = self.conf['command_prefix']
         if message.content.startswith(prefix):
             text = message.content[len(prefix):]
-            result = await process_command(self, message, text)
+
+            try:
+                result = await process_command(self, message, text)
+            except Exception as e:
+                logging.exception(e)
+                result = None
+
             if result is None:
                 result = {'react': '\U0001f937'} # shrug
             if 'reply' in result:
