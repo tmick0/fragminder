@@ -1,3 +1,9 @@
+# have to monkeypatch as early as possible
+import gevent
+from gevent import monkey
+monkey.patch_all()
+
+
 from .commands import process_command
 from .database import fmdb
 from .steam_utils import steamapi
@@ -18,12 +24,12 @@ class fragminder (discord.Client):
         super().__init__()
         self.conf = config
         self.ready = False
+        self.steam = steamapi(self.conf)
 
     async def on_ready(self):
         loop = asyncio.get_event_loop()
         if not self.ready:
             self.db = await fmdb.open(self.conf['database_file'])
-            self.steam = steamapi(self.conf['steam_api_key'])
             self._user_poller = recurring_task(float(self.conf['user_poll_interval']), do_update, self)
             self.ready = True
             await self._user_poller.start()

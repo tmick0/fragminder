@@ -2,11 +2,8 @@ from .steam_utils import *
 from .help import format_help
 from . import emoji
 
-import re
-
 __all__ = ['process_command']
 
-inspect_url_regex = re.compile('^steam://rungame/730/.*S[0-9]+A([0-9]+)D[0-9]+$')
 COMMANDS = {}
 
 
@@ -52,17 +49,13 @@ async def weapon(ctx, msg, inspect_url, *name):
     """
 
     name = " ".join(name)
-    match = inspect_url_regex.match(inspect_url)
-    if match:
-        asset = int(match[1])
-        # TODO: handle bot receiving dm (guild will be null)
-        # TODO: handle get_user_id failure (user not registered)
-        # TODO: verify that the item is in the user's inventory and is stattrak
-        uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
-        await ctx.db.add_weapon(uid, asset, name)
-        return {'react': emoji.thumbsup}
-    else: # poorly formatted inspect url
-        return {'react': emoji.thumbsdown}
+    _, asset, _ = ctx.steam.parse_inspect_url(inspect_url)
+    # TODO: handle bot receiving dm (guild will be null)
+    # TODO: handle get_user_id failure (user not registered)
+    # TODO: verify that the item is in the user's inventory and is stattrak
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    await ctx.db.add_weapon(uid, asset, name)
+    return {'react': emoji.thumbsup}
 
 
 @cmd("weapons")

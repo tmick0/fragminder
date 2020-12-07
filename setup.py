@@ -10,6 +10,6 @@ setup(
     url="https://github.com/tmick0/fragminder",
     packages=['fragminder'],
     python_requires='>=3.6',
-    install_requires=['requests>=2.25,<3', 'discord>=1.0,<2', 'aiosqlite>=0.16,<0.17'],
+    install_requires=['requests>=2.25,<3', 'discord>=1.0,<2', 'aiosqlite>=0.16,<0.17', 'steam>=1.0,<2', 'csgo>=1.0,<2'],
     entry_points={"console_scripts": ["fragminder=fragminder.main:main"]}
 )
