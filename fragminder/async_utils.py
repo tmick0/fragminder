@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 __all__ = ['recurring_task']
 
@@ -13,7 +14,11 @@ class recurring_task (object):
 
     async def _run(self):
         while True:
-            await self._fn(*self._args)
+            try:
+                await self._fn(*self._args)
+            except Exception as e:
+                logging.error("failed recurring task")
+                logging.exception(e)
             await asyncio.sleep(self._delta_time)
 
     async def stop(self):
