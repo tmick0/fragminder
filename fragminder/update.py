@@ -27,8 +27,6 @@ alert_deltas = [20, 10, 5, 3, 2, 1]
 
 async def do_update(ctx):
 
-    await ctx.wait_until_ready()
-
     users = await ctx.db.get_users()
     online_users = await ctx.steam.get_active_players([steam_id for _, _, _, steam_id in users])
 
