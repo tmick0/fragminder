@@ -82,6 +82,58 @@ async def weapons(ctx, msg, *args):
 
     return {'reply': msg}
 
+
+@cmd("rename")
+async def rename(ctx, msg, *args):
+    """ * desc: rename a registered weapon
+        * args: old_name... -> new_name...
+        * example: my fancy ak -> my crappy ak
+    """
+    
+    delim = args.index('->')
+    old_name = (" ".join(args[:delim])).strip()
+    new_name = (" ".join(args[delim+1:])).strip()
+
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    wid = await ctx.db.get_weapon_id(uid, old_name)
+
+    if uid is None or wid is None:
+        return {'react': emoji.thumbsdown}
+    
+    await ctx.db.rename_weapon(wid, new_name)
+
+    return {'react': emoji.thumbsup}
+
+
+@cmd("watches")
+async def watches(ctx, msg):
+    """ * desc: list your stattrak watches
+    """
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    watches = await ctx.db.get_user_watches(uid)
+    msg = ""
+    for _, _, name, _, count, _, _ in watches:
+        msg += "\n * `{}`: {:d}".format(name, count)
+    return {'reply': msg}
+
+
+@cmd("unwatch")
+async def unwatch(ctx, msg, count, *name):
+    """ * desc: remove a stattrak count watch
+        * args: number item_name...
+        * example: 6969my fancy ak
+    """
+    name = " ".join(name)
+    # TODO: handle bot receiving dm (guild will be null)
+    # TODO: handle get_user_id failure (user not registered)
+    # TODO: handle get_weapon_id failure (weapon not added)
+    # TODO: handle requested count <= current count
+    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    wid = await ctx.db.get_watch_id(uid, name, count)
+    await ctx.db.remove_watch(wid)
+    return {'react': emoji.thumbsup}
+
+
 @cmd("watch")
 async def watch(ctx, msg, count, *name):
     """ * desc: set a stattrak count to watch for

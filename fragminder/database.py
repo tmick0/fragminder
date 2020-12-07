@@ -131,6 +131,21 @@ class fmdb (object):
         """, (last_count, last_check, weapon_id))
         await self._conn.commit()
 
+    async def get_watch_id(self, user_id, name, count):
+        async with self._conn.execute("""\
+            select watch_id
+            from watch_t
+            left join weapon_t on watch_t.weapon_id = weapon_t.weapon_id
+            where name = ? and count = ? and user_id = ?
+        """, (name, count, user_id)) as c:
+            async for row in c:
+                return row['watch_id']
+        return None
+
     async def remove_watch(self, watch_id):
         await self._conn.execute("delete from watch_t where watch_id = ?", (watch_id,))
+        await self._conn.commit()
+
+    async def rename_weapon(self, weapon_id, name):
+        await self._conn.execute("update weapon_t set name = ? where weapon_id = ?", (name, weapon_id))
         await self._conn.commit()
