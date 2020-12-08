@@ -49,7 +49,7 @@ async def weapon(ctx, msg, inspect_url, *name):
     """
 
     name = " ".join(name)
-    _, asset, _ = ctx.steam.parse_inspect_url(inspect_url)
+    _, asset, _ = await ctx.steam.parse_inspect_url(inspect_url)
     # TODO: handle bot receiving dm (guild will be null)
     # TODO: handle get_user_id failure (user not registered)
     # TODO: verify that the item is in the user's inventory and is stattrak

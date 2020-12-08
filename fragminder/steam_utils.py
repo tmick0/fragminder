@@ -11,18 +11,26 @@ class steamapi(object):
 
     _gameid = 730
     _inspect_url_regex = re.compile('^steam://rungame/730/.*S([0-9]+)A([0-9]+)D([0-9]+)$')
+    _invent_link_regex = re.compile('^(https://steamcommunity.com/id/[^/]+)/inventory/#730_2_([0-9]+)$')
 
     def __init__(self, config):
         self._key = config['steam_api_key']
         self._config = config
         self._client = csgo_client(config)
 
-    def parse_inspect_url(self, url):
+    async def parse_inspect_url(self, url):
         match = self._inspect_url_regex.match(url)
-        if not match:
-            return None, None, None
-        return int(match[1]), int(match[2]), int(match[3])
-
+        if match:
+            return int(match[1]), int(match[2]), int(match[3])
+        match = self._invent_link_regex.match(url)
+        if match:
+            s = await self.get_user_id(match[1])
+            a = int(match[2])
+            data = await self.get_items_info(s, [a])
+            if a in data:
+                return await self.parse_inspect_url(data[a]['inspect'])
+        return None, None, None
+        
     def _build_inventory_url(self, user_id, last_assetid=None):
         page_limit = 1000
         url = 'https://steamcommunity.com/inventory/{:d}/{:d}/2?l=english&count={:d}'.format(user_id, self._gameid, page_limit)
@@ -98,7 +106,7 @@ class steamapi(object):
                 else: # failed to find inspect link
                     continue
 
-                s, a, d = self.parse_inspect_url(inspect_link)
+                s, a, d = await self.parse_inspect_url(inspect_link)
                 retry_count = 0
                 while retry_count < 5:
                     try:
@@ -119,7 +127,8 @@ class steamapi(object):
                 result[keys[key]] = {
                     'stattrak': st_count,
                     'name': item['name'],
-                    'image': self._build_item_preview_url(item['icon_url'])
+                    'image': self._build_item_preview_url(item['icon_url']),
+                    'inspect': inspect_link
                 }
             
             if 'more_items' in data and data['more_items']:
@@ -143,7 +152,7 @@ class steamapi(object):
                 return None
             data = r.json()
             if data['response']['success']:
-                return data['response']['steamid']
+                return int(data['response']['steamid'])
             else: # error
                 return None
         elif parts[0] == 'profile': # url contains the id
