@@ -65,7 +65,7 @@ class fmdb (object):
         if channel_id:
             await self._conn.execute("replace into guild_t (guild_id, channel_id) values (?, ?)", (guild_id, channel_id))
         else:
-            await self._conn.execute("insert into guild_t (guild_id) values (?) on conflict do nothing", (guild_id,))
+            await self._conn.execute("insert or ignore into guild_t (guild_id) values (?)", (guild_id,))
         await self._conn.commit()
 
     async def add_user(self, guild_id, discord_id, steam_id):
