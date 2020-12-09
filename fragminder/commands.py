@@ -47,14 +47,14 @@ async def weapon(ctx, msg, inspect_url, *name):
         * example: steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S76561198116123325A17495329572D2918438303529470971 my fancy ak
         * tip: get the inspect url from your steam profile: <https://steamcommunity.com/my/inventory#730>
     """
-
-    name = " ".join(name)
-    _, asset, _ = await ctx.steam.parse_inspect_url(inspect_url)
     # TODO: handle bot receiving dm (guild will be null)
     # TODO: handle get_user_id failure (user not registered)
     # TODO: verify that the item is in the user's inventory and is stattrak
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
-    await ctx.db.add_weapon(uid, asset, name)
+
+    name = " ".join(name)
+    uid, sid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    assetid, classid, instanceid = await ctx.steam.resolve_item_url(inspect_url)
+    await ctx.db.add_weapon(uid, assetid, classid, instanceid, name)
     return {'react': emoji.thumbsup}
 
 
@@ -63,7 +63,7 @@ async def weapons(ctx, msg, *args):
     """ * desc: show the weapons you've registered with me
     """
     
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     weapons = await ctx.db.get_user_weapons(uid)
 
     if len(weapons) == 0:
@@ -87,7 +87,7 @@ async def rename(ctx, msg, *args):
     old_name = (" ".join(args[:delim])).strip()
     new_name = (" ".join(args[delim+1:])).strip()
 
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_weapon_id(uid, old_name)
 
     if uid is None or wid is None:
@@ -102,10 +102,10 @@ async def rename(ctx, msg, *args):
 async def watches(ctx, msg):
     """ * desc: list your stattrak watches
     """
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     watches = await ctx.db.get_user_watches(uid)
     msg = ""
-    for _, _, name, _, count, _, _ in watches:
+    for _, _, name, _, _, _, count, _, _ in watches:
         msg += "\n * `{}`: {:d}".format(name, count)
     return {'reply': msg}
 
@@ -121,7 +121,7 @@ async def unwatch(ctx, msg, count, *name):
     # TODO: handle get_user_id failure (user not registered)
     # TODO: handle get_weapon_id failure (weapon not added)
     # TODO: handle requested count <= current count
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_watch_id(uid, name, count)
     await ctx.db.remove_watch(wid)
     return {'react': emoji.thumbsup}
@@ -139,7 +139,7 @@ async def watch(ctx, msg, count, *name):
     # TODO: handle get_user_id failure (user not registered)
     # TODO: handle get_weapon_id failure (weapon not added)
     # TODO: handle requested count <= current count
-    uid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_weapon_id(uid, name)
     await ctx.db.add_watch(wid, int(count))
     return {'react': emoji.thumbsup}
@@ -168,14 +168,12 @@ async def help(ctx, msg, *key):
     """
     
     if len(key) == 0:
-
         all_commands = []
         for cmd in sorted(COMMANDS.keys()):
             try:
                 all_commands.append(format_help(cmd, COMMANDS[cmd].__doc__, prefix=ctx.conf['command_prefix'], short=True))
             except AttributeError: # no help
                 pass
-
         return {
             'reply': """\
 i'm a bot that reminds you when your stattrak stuff is about to reach a cool number. here are my commands:
@@ -188,12 +186,10 @@ protip: try `{}help <command>` for help on a specific command
     else:
         key, *_ = key
         key = key.lower()
-
         if not key in COMMANDS:
             return {
                 'reply': "sorry, i don't have a '{}' command".format(key)
             }
-        
         try:
             return {
                 'reply': '\n' + format_help(key, COMMANDS[key].__doc__, prefix=ctx.conf['command_prefix'])

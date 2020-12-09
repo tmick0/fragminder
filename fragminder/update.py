@@ -49,21 +49,21 @@ async def do_update(ctx):
 
             # build lookup table for user's watched assets
             assets = asset_dict(asset_info)
-            for watch_id, weapon_id, name, asset_id, count, last_count, last_check in watches:
-                assets[asset_id].name = name
-                assets[asset_id].weapon_id = weapon_id
-                assets[asset_id].last_count = last_count
-                assets[asset_id].last_check = last_check
-                assets[asset_id].add_watch(watch_id, count)
+            for watch_id, weapon_id, name, asset_id, class_id, instance_id, count, last_count, last_check in watches:
+                assets[(asset_id, class_id, instance_id)].name = name
+                assets[(asset_id, class_id, instance_id)].weapon_id = weapon_id
+                assets[(asset_id, class_id, instance_id)].last_count = last_count
+                assets[(asset_id, class_id, instance_id)].last_check = last_check
+                assets[(asset_id, class_id, instance_id)].add_watch(watch_id, count)
 
             # get steam inventory data
             data = await ctx.steam.get_items_info(steam_id, list(assets.keys()))
 
             # find items which need alerting
             alerts = []
-            for asset_id, data in data.items():
+            for key, data in data.items():
 
-                a = assets[asset_id]
+                a = assets[key]
                 await ctx.db.update_weapon(a.weapon_id, data['stattrak'], datetime.now(tz=timezone.utc).timestamp())
 
                 if a.last_count is None:

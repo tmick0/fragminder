@@ -17,19 +17,6 @@ class steamapi(object):
         self._key = config['steam_api_key']
         self._config = config
         self._client = csgo_client(config)
-
-    async def parse_inspect_url(self, url):
-        match = self._inspect_url_regex.match(url)
-        if match:
-            return int(match[1]), int(match[2]), int(match[3])
-        match = self._invent_link_regex.match(url)
-        if match:
-            s = await self.get_user_id(match[1])
-            a = int(match[2])
-            data = await self.get_items_info(s, [a])
-            if a in data:
-                return await self.parse_inspect_url(data[a]['inspect'])
-        return None, None, None
         
     def _build_inventory_url(self, user_id, last_assetid=None):
         page_limit = 1000
@@ -50,10 +37,30 @@ class steamapi(object):
     def _build_inspect_url(self, url_template, uid, assetid):
         return url_template.replace('%owner_steamid%', str(uid)).replace('%assetid%', str(assetid))
 
+    def _build_item_info_url(self, tups):
+        item_args = '&'.join("classid{}={}&instanceid{}={}".format(n, c, n, i) for (n, (_, c, i)) in enumerate(tups))
+        return 'https://api.steampowered.com/ISteamEconomy/GetAssetClassInfo/v1/?key={}&appid={}&language=english&class_count={}&{}'.format(self._key, self._gameid, len(tups), item_args)
+
+    async def parse_inspect_url(self, url):
+        match = self._inspect_url_regex.match(url)
+        if match:
+            return int(match[1]), int(match[2]), int(match[3])
+        return None, None, None
+
+    async def resolve_item_url(self, url):
+        match = self._inspect_url_regex.match(url)
+        if match:
+            return await self.resolve_item_tuple(int(match[1]), int(match[2]))
+        match = self._invent_link_regex.match(url)
+        if match:
+            s = await self.get_user_id(match[1])
+            a = int(match[2])
+            return await self.resolve_item_tuple(s, a)
+        return None, None, None
+
     async def get_active_players(self, user_ids):
         loop = asyncio.get_event_loop()
         max_users_per_request = 32
-
         res = []
         for i in range(0, len(user_ids), max_users_per_request):
             user_ids_subset = user_ids[i:i+max_users_per_request]
@@ -67,15 +74,9 @@ class steamapi(object):
                     res.append(int(p['steamid']))
         return res
 
-    async def get_items_info(self, user_id, asset_ids):
-        # TODO: if inventory calls get ratelimited, look into using authenticated
-        # ISteamEconomy/GetAssetClassInfo call -- we will have to look up the
-        # classid/instanceid just once with the public inventory api and store them
-
+    async def resolve_item_tuple(self, user_id, asset_id):
         loop = asyncio.get_event_loop()
         last_asset_id = None
-
-        result = {}
         while True:
             url = self._build_inventory_url(user_id, last_asset_id)
             r = await loop.run_in_executor(None, requests.get, url)
@@ -83,58 +84,62 @@ class steamapi(object):
                 raise RuntimeError("failed to fetch inventory")
             data = r.json()
             if not 'assets' in data: # reached end
+                logging.info("no data from inventory call")
                 break
-
-            # we have to map the 'assets' list to the 'descriptions' list via the (classid, instanceid) tuple
-            # the asset dict contains the assetid which we obtained from the inspect url, while descriptions has everything else we need
-            keys = {}
             for asset in data["assets"]:
-                if int(asset["assetid"]) in asset_ids:
-                    keys[(asset["classid"], asset["instanceid"])] = int(asset["assetid"])
+                if int(asset["assetid"]) == asset_id:
+                    return asset_id, int(asset["classid"]), int(asset["instanceid"])
+        return None, None, None
 
-            for item in data['descriptions']:
-                key = (item["classid"], item["instanceid"])
-                if not key in keys: # this is not one of the requested items
-                    continue
-                if not 'actions' in item: # not inspectable
-                    continue
-                
-                for action in item['actions']:
-                    if action['name'].startswith('Inspect'):
-                        inspect_link = self._build_inspect_url(action['link'], user_id, keys[key])
-                        break
-                else: # failed to find inspect link
-                    continue
+    async def get_items_info(self, user_id, item_tuples):
+        loop = asyncio.get_event_loop()
+        last_asset_id = None
 
-                s, a, d = await self.parse_inspect_url(inspect_link)
-                retry_count = 0
-                while retry_count < 5:
-                    try:
-                        st_count = await loop.run_in_executor(None, self._client.get_item_killcount, s, a, d)
-                    except (TypeError, ValueError):
-                        # TODO: fix this dumb hack
-                        await asyncio.sleep(0.25)
-                        retry_count += 1
-                        continue
-                    except Exception as e:
-                        logging.warning("failed to get st count for {} {} {}".format(s, a, d))
-                        logging.exception(e)
+        result = {}
+        url = self._build_item_info_url(item_tuples)
+        r = await loop.run_in_executor(None, requests.get, url)
+        if not r.status_code == 200: # error
+            raise RuntimeError("failed to fetch items")
+        data = r.json()
+        if not 'result' in data:
+            raise RuntimeError("failed to fetch items")
+
+        for asset_id, class_id, instance_id in item_tuples:
+            item = data['result']["{}_{}".format(class_id, instance_id)]
+            if not 'actions' in item: # not inspectable
+                continue
+            for _, action in item['actions'].items():
+                if action['name'].startswith('Inspect'):
+                    inspect_link = self._build_inspect_url(action['link'], user_id, asset_id)
                     break
-                if retry_count == 5:
-                    logging.warning("too many failures on getting st count for {} {} {}".format(s, a, d))
-                    continue
+            else: # failed to find inspect link
+                continue
 
-                result[keys[key]] = {
-                    'stattrak': st_count,
-                    'name': item['name'],
-                    'image': self._build_item_preview_url(item['icon_url']),
-                    'inspect': inspect_link
-                }
-            
-            if 'more_items' in data and data['more_items']:
-                last_asset_id = data['last_asset_id']
-            else:
+            s, a, d = await self.parse_inspect_url(inspect_link)
+            retry_count = 0
+            while retry_count < 5:
+                try:
+                    st_count = await loop.run_in_executor(None, self._client.get_item_killcount, s, a, d)
+                except (TypeError, ValueError) as e:
+                    # TODO: fix this dumb hack
+                    logging.info("failed to get st count for {} {} {}, retrying...".format(s, a, d))
+                    await asyncio.sleep(0.25)
+                    retry_count += 1
+                    continue
+                except Exception as e:
+                    logging.warning("failed to get st count for {} {} {}".format(s, a, d))
+                    logging.exception(e)
                 break
+            if retry_count == 5:
+                logging.warning("too many failures on getting st count for {} {} {}".format(s, a, d))
+                continue
+
+            result[(asset_id, class_id, instance_id)] = {
+                'stattrak': st_count,
+                'name': item['name'],
+                'image': self._build_item_preview_url(item['icon_url']),
+                'inspect': inspect_link
+            }
 
         return result
 

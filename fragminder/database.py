@@ -42,6 +42,8 @@ class fmdb (object):
                 user_id integer not null,
                 name text not null,
                 asset_id integer not null unique,
+                class_id integer not null,
+                instance_id integer not null,
                 last_count integer null,
                 last_check integer null,
                 foreign key (user_id) references user_t (user_id),
@@ -72,8 +74,8 @@ class fmdb (object):
         await self._conn.execute("insert into user_t (guild_id, discord_id, steam_id) values (?, ?, ?)", (guild_id, discord_id, steam_id))
         await self._conn.commit()
 
-    async def add_weapon(self, user_id, asset_id, name):
-        await self._conn.execute("insert into weapon_t (user_id, asset_id, name) values (?, ?, ?)", (user_id, asset_id, name))
+    async def add_weapon(self, user_id, asset_id, class_id, instance_id, name):
+        await self._conn.execute("insert into weapon_t (user_id, asset_id, class_id, instance_id, name) values (?, ?, ?, ?, ?)", (user_id, asset_id, class_id, instance_id, name))
         await self._conn.commit()
 
     async def add_watch(self, weapon_id, count):
@@ -95,7 +97,7 @@ class fmdb (object):
     async def get_user_id(self, guild_id, discord_id):
         async with self._conn.execute("select * from user_t where guild_id = ? and discord_id = ?", (guild_id, discord_id,)) as c:
             async for row in c:
-                return row['user_id']
+                return row['user_id'], row['steam_id']
         return None
 
     async def get_weapon_id(self, user_id, name):
@@ -114,13 +116,13 @@ class fmdb (object):
     async def get_user_watches(self, user_id):
         res = []
         async with self._conn.execute("""\
-            select watch_id, weapon_t.weapon_id, asset_id, count, name, last_count, last_check
+            select watch_id, weapon_t.weapon_id, asset_id, class_id, instance_id, count, name, last_count, last_check
             from watch_t
             left join weapon_t on watch_t.weapon_id = weapon_t.weapon_id
             where weapon_t.user_id = ?\
         """, (user_id,)) as c:
             async for row in c:
-                res.append((row['watch_id'], row['weapon_id'], row['name'], row['asset_id'], row['count'], row['last_count'], row['last_check']))
+                res.append((row['watch_id'], row['weapon_id'], row['name'], row['asset_id'], row['class_id'], row['instance_id'], row['count'], row['last_count'], row['last_check']))
         return res
 
     async def update_weapon(self, weapon_id, last_count, last_check):
