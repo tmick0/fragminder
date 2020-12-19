@@ -23,14 +23,19 @@ class asset_info (object):
         self.watches.append((watch_id, count))
     
 
-alert_deltas = [20, 10, 5, 3, 2, 1]
+default_alert_deltas = [20, 10, 5, 3, 2, 1]
 
 async def do_update(ctx):
 
     users = await ctx.db.get_users()
-    online_users = await ctx.steam.get_active_players([steam_id for _, _, _, steam_id in users])
+    online_users = await ctx.steam.get_active_players([steam_id for _, _, _, steam_id, _ in users])
 
-    for guild_id, user_id, discord_id, steam_id in users:
+    for guild_id, user_id, discord_id, steam_id, alert_deltas in users:
+
+        if alert_deltas is not None:
+            alert_deltas = list(map(int, alert_deltas.split(",")))
+        else:
+            alert_deltas = default_alert_deltas
 
         if steam_id in online_users:
 

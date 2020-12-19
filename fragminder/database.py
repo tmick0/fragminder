@@ -32,6 +32,7 @@ class fmdb (object):
                 guild_id integer not null references guild_t (guild_id),
                 discord_id integer not null,
                 steam_id integer not null,
+                alert_deltas text null,
                 unique (guild_id, discord_id)
             )
         """)
@@ -82,6 +83,16 @@ class fmdb (object):
         await self._conn.execute("insert into watch_t (weapon_id, count) values (?, ?)", (weapon_id, count))
         await self._conn.commit()
 
+    async def set_alert_deltas(self, user_id, deltas):
+        deltas = ",".join(map(str, deltas))
+        await self._conn.execute("update user_t set alert_deltas = ? where user_id = ?", (deltas, user_id))
+        await self._conn.commit()
+
+    async def get_alert_deltas(self, user_id):
+        async with self._conn.execute("select alert_deltas from user_t where user_id = ?", (user_id, )) as c:
+            async for row in c:
+                return row['alert_deltas']
+
     async def get_guild(self, guild_id):
         async with self._conn.execute("select * from guild_t where guild_id = ?", (guild_id, )) as c:
             async for row in c:
@@ -91,7 +102,7 @@ class fmdb (object):
         res = []
         async with self._conn.execute("select * from user_t") as c:
             async for row in c:
-                res.append((row['guild_id'], row['user_id'], row['discord_id'], row['steam_id']))
+                res.append((row['guild_id'], row['user_id'], row['discord_id'], row['steam_id'], row['alert_deltas']))
         return res
 
     async def get_user_id(self, guild_id, discord_id):

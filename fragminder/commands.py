@@ -161,6 +161,30 @@ async def setchannel(ctx, msg, *args):
     return {'react': emoji.thumbsup}
 
 
+@cmd("remind")
+async def remind(ctx, msg, *args):
+    """ * desc: set increments for watch reminders
+        * args: increments...
+        * example: 5 2 1
+        * tip: the default is `20 10 5 3 2 1`; if no increments are specified, returns your current configuration
+    """
+    # TODO: handle bot receiving dm (guild will be null)
+    # TODO: handle get_user_id failure (user not registered)
+    # TODO: handle parse error
+    uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    if len(args) == 0:
+        res = await ctx.db.get_alert_deltas(uid)
+        if res is not None:
+            reply = " ".join(res.split(","))
+        else:
+            reply = "the default"
+        return {'reply': "your reminder increments are {}".format(reply)}
+    else:
+        deltas = list(sorted(map(int, args), reverse=True))
+        await ctx.db.set_alert_deltas(uid, deltas)
+        return {'react': emoji.thumbsup}
+
+
 @cmd("help")
 async def help(ctx, msg, *key):
     """ * desc: (psst, you're already here!)
