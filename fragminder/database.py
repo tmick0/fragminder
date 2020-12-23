@@ -57,6 +57,7 @@ class fmdb (object):
                 watch_id integer primary key autoincrement,
                 weapon_id integer not null,
                 count integer not null,
+                wildcard integer not null default 0,
                 foreign key (weapon_id) references weapon_t (weapon_id),
                 unique (weapon_id, count)
             )
@@ -79,8 +80,8 @@ class fmdb (object):
         await self._conn.execute("insert into weapon_t (user_id, asset_id, class_id, instance_id, name) values (?, ?, ?, ?, ?)", (user_id, asset_id, class_id, instance_id, name))
         await self._conn.commit()
 
-    async def add_watch(self, weapon_id, count):
-        await self._conn.execute("insert into watch_t (weapon_id, count) values (?, ?)", (weapon_id, count))
+    async def add_watch(self, weapon_id, count, wildcard=False):
+        await self._conn.execute("insert into watch_t (weapon_id, count, wildcard) values (?, ?, ?)", (weapon_id, count, wildcard))
         await self._conn.commit()
 
     async def set_alert_deltas(self, user_id, deltas):
@@ -127,13 +128,13 @@ class fmdb (object):
     async def get_user_watches(self, user_id):
         res = []
         async with self._conn.execute("""\
-            select watch_id, weapon_t.weapon_id, asset_id, class_id, instance_id, count, name, last_count, last_check
+            select watch_id, weapon_t.weapon_id, asset_id, class_id, instance_id, count, name, last_count, last_check, wildcard
             from watch_t
             left join weapon_t on watch_t.weapon_id = weapon_t.weapon_id
             where weapon_t.user_id = ?\
         """, (user_id,)) as c:
             async for row in c:
-                res.append((row['watch_id'], row['weapon_id'], row['name'], row['asset_id'], row['class_id'], row['instance_id'], row['count'], row['last_count'], row['last_check']))
+                res.append((row['watch_id'], row['weapon_id'], row['name'], row['asset_id'], row['class_id'], row['instance_id'], row['count'], row['last_count'], row['last_check'], row['wildcard']))
         return res
 
     async def update_weapon(self, weapon_id, last_count, last_check):

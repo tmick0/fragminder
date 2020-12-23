@@ -105,8 +105,11 @@ async def watches(ctx, msg):
     uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     watches = await ctx.db.get_user_watches(uid)
     msg = ""
-    for _, _, name, _, _, _, count, _, _ in watches:
-        msg += "\n * `{}`: {:d}".format(name, count)
+    for _, _, name, _, _, _, count, _, _, wild in watches:
+        count = str(count)
+        if wild:
+            count = "*" + ("0" * (wild - len(count))) + count
+        msg += "\n * `{}`: {}".format(name, count)
     return {'reply': msg}
 
 
@@ -132,16 +135,24 @@ async def watch(ctx, msg, count, *name):
     """ * desc: set a stattrak count to watch for
         * args: number item_name...
         * example: 6969 my fancy ak
-        * tip: you can add multiple watches for an item
+        * tip: you can add multiple watches for an item, or match on a count suffix with *69
     """
     name = " ".join(name)
     # TODO: handle bot receiving dm (guild will be null)
     # TODO: handle get_user_id failure (user not registered)
     # TODO: handle get_weapon_id failure (weapon not added)
     # TODO: handle requested count <= current count
+
+    if count[0] == '*':
+        wildcard = len(count[1:])
+        count = int(count[1:])
+    else:
+        wildcard = 0
+        count = int(count)
+
     uid, _ = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
     wid = await ctx.db.get_weapon_id(uid, name)
-    await ctx.db.add_watch(wid, int(count))
+    await ctx.db.add_watch(wid, count, wildcard)
     return {'react': emoji.thumbsup}
 
 

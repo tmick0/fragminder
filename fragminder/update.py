@@ -19,9 +19,15 @@ class asset_info (object):
         self.last_check = None
         self.watches = []
 
-    def add_watch(self, watch_id, count):
-        self.watches.append((watch_id, count))
-    
+    def add_watch(self, watch_id, count, wild):
+        self.watches.append((watch_id, count, wild))
+
+
+def get_next_wildcard_match(key, digits, current):
+    mod = 10 ** digits
+    target = mod * ((current + mod - 1) // mod) + key
+    return target
+
 
 default_alert_deltas = [20, 10, 5, 3, 2, 1]
 
@@ -54,12 +60,14 @@ async def do_update(ctx):
 
             # build lookup table for user's watched assets
             assets = asset_dict(asset_info)
-            for watch_id, weapon_id, name, asset_id, class_id, instance_id, count, last_count, last_check in watches:
+            for watch_id, weapon_id, name, asset_id, class_id, instance_id, count, last_count, last_check, wildcard in watches:
+                if wildcard:
+                    count = get_next_wildcard_match(count, wildcard, last_count)
                 assets[(asset_id, class_id, instance_id)].name = name
                 assets[(asset_id, class_id, instance_id)].weapon_id = weapon_id
                 assets[(asset_id, class_id, instance_id)].last_count = last_count
                 assets[(asset_id, class_id, instance_id)].last_check = last_check
-                assets[(asset_id, class_id, instance_id)].add_watch(watch_id, count)
+                assets[(asset_id, class_id, instance_id)].add_watch(watch_id, count, wildcard)
 
             # get steam inventory data
             data = await ctx.steam.get_items_info(steam_id, list(assets.keys()))
@@ -77,11 +85,12 @@ async def do_update(ctx):
                 # check that count has changed since last update, otherwise do nothing
                 if data['stattrak'] > a.last_count:
 
-                    for watch_id, watch_count in a.watches:
+                    for watch_id, watch_count, is_wild in a.watches:
 
                         # check if we already hit the threshold
                         if data['stattrak'] >= watch_count:
-                            await ctx.db.remove_watch(watch_id)
+                            if not is_wild:
+                                await ctx.db.remove_watch(watch_id)
                             alerts.append({
                                 'hit': True,
                                 'delta': 0,
