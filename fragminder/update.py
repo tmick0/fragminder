@@ -66,9 +66,11 @@ async def do_update(ctx):
 
             # notify user of missing items
             for a, c, i in missing:
-                item = assets[(a, c, i)]
-                msg = '{}: your item `{}` is missing from your inventory, you might need to change its id or remove it'.format(user.mention, item.name)
-                await dest.send(msg)
+                if not await ctx.db.known_missing(steam_id, c, i, a):
+                    item = assets[(a, c, i)]
+                    msg = '{}: your item `{}` is missing from your inventory, you might need to change its id or remove it'.format(user.mention, item.name)
+                    await dest.send(msg)
+                    await ctx.db.mark_missing(steam_id, c, i, a)
 
             # find items which need alerting
             alerts = []
