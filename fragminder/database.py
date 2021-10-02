@@ -63,6 +63,27 @@ class fmdb (object):
             )
         """)
 
+        await self._conn.execute("""
+            create table if not exists missing_t (
+                steam_id integer not null,
+                class_id integer not null,
+                instance_id integer not null,
+                asset_id integer not null,
+                primary key (steam_id, class_id, instance_id, asset_id)
+            )
+        """)
+
+        await self._conn.commit()
+
+    async def known_missing(self, steam_id, class_id, instance_id, asset_id):
+        async with self._conn.execute("select * from missing_t where steam_id = ? and class_id = ? and instance_id = ? and asset_id = ?", (steam_id, class_id, instance_id, asset_id)) as c:
+            async for row in c:
+                return True
+            else:
+                return False
+
+    async def mark_missing(self, steam_id, class_id, instance_id, asset_id):
+        await self._conn.execute("insert into missing_t (steam_id, class_id, instance_id, asset_id) values (?, ?, ?, ?)", (steam_id, class_id, instance_id, asset_id))
         await self._conn.commit()
 
     async def add_or_update_guild(self, guild_id, channel_id=None):
