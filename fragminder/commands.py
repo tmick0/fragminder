@@ -58,6 +58,23 @@ async def weapon(ctx, msg, inspect_url, *name):
     return {'react': emoji.thumbsup}
 
 
+@cmd("reid")
+async def reid(ctx, msg, inspect_url, *name):
+    """ * desc: change the inspect url of a stattrak item
+        * args: inspect_url item_name...
+        * example: steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S76561198116123325A17495329572D2918438303529470971 my fancy ak
+        * tip: get the inspect url from your steam profile: <https://steamcommunity.com/my/inventory#730>
+    """
+    # TODO: handle bot receiving dm (guild will be null)
+    # TODO: handle get_user_id failure (user not registered)
+    # TODO: verify that the item is in the user's inventory and is stattrak
+
+    name = " ".join(name)
+    uid, sid = await ctx.db.get_user_id(msg.guild.id, msg.author.id)
+    assetid, classid, instanceid = await ctx.steam.resolve_item_url(inspect_url)
+    await ctx.db.reid_weapon(uid, assetid, classid, instanceid, name)
+    return {'react': emoji.thumbsup}
+
 @cmd("weapons")
 async def weapons(ctx, msg, *args):
     """ * desc: show the weapons you've registered with me
