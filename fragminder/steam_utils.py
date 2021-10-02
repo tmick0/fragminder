@@ -104,15 +104,18 @@ class steamapi(object):
         if not 'result' in data:
             raise RuntimeError("failed to fetch items")
 
+        missing = []
         for asset_id, class_id, instance_id in item_tuples:
             item = data['result']["{}_{}".format(class_id, instance_id)]
             if not 'actions' in item: # not inspectable
+                missing.append((asset_id, class_id, instance_id))
                 continue
             for _, action in item['actions'].items():
                 if action['name'].startswith('Inspect'):
                     inspect_link = self._build_inspect_url(action['link'], user_id, asset_id)
                     break
             else: # failed to find inspect link
+                missing.append((asset_id, class_id, instance_id))
                 continue
 
             s, a, d = await self.parse_inspect_url(inspect_link)
@@ -141,7 +144,7 @@ class steamapi(object):
                 'inspect': inspect_link
             }
 
-        return result
+        return result, missing
 
     async def get_user_id(self, steam_profile_url):
         loop = asyncio.get_event_loop()
