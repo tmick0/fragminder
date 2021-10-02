@@ -80,6 +80,10 @@ class fmdb (object):
         await self._conn.execute("insert into weapon_t (user_id, asset_id, class_id, instance_id, name) values (?, ?, ?, ?, ?)", (user_id, asset_id, class_id, instance_id, name))
         await self._conn.commit()
 
+    async def reid_weapon(self, user_id, asset_id, class_id, instance_id, name):
+        await self._conn.execute("update weapon_t set asset_id = ?, class_id = ?, instance_id = ? where user_id = ? and name = ?", (asset_id, class_id, instance_id, user_id, name))
+        await self._conn.commit()
+
     async def add_watch(self, weapon_id, count, wildcard=False):
         await self._conn.execute("insert into watch_t (weapon_id, count, wildcard) values (?, ?, ?)", (weapon_id, count, wildcard))
         await self._conn.commit()
