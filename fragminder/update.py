@@ -62,7 +62,13 @@ async def do_update(ctx):
                 assets[(asset_id, class_id, instance_id)].add_watch(watch_id, count)
 
             # get steam inventory data
-            data = await ctx.steam.get_items_info(steam_id, list(assets.keys()))
+            data, missing = await ctx.steam.get_items_info(steam_id, list(assets.keys()))
+
+            # notify user of missing items
+            for a, c, i in missing:
+                item = assets[(a, c, i)]
+                msg = '{}: your item `{}` is missing from your inventory, you might need to change its id or remove it'.format(user.mention, item.name)
+                await dest.send(msg)
 
             # find items which need alerting
             alerts = []
