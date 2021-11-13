@@ -99,10 +99,10 @@ class steamapi(object):
         url = self._build_item_info_url(item_tuples)
         r = await loop.run_in_executor(None, requests.get, url)
         if not r.status_code == 200: # error
-            raise RuntimeError("failed to fetch items")
+            raise RuntimeError("failed to fetch items (status code {:d})".format(r.status_code))
         data = r.json()
         if not 'result' in data:
-            raise RuntimeError("failed to fetch items")
+            raise RuntimeError("failed to fetch items: no 'result' key")
 
         missing = []
         for asset_id, class_id, instance_id in item_tuples:

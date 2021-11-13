@@ -58,6 +58,9 @@ async def do_update(ctx):
             # TODO: handle a user being registered in multiple guilds, in which case we should elide duplicate inventory lookups
             watches = await ctx.db.get_user_watches(user_id)
 
+            if len(watches) == 0:
+                continue
+
             # build lookup table for user's watched assets
             assets = asset_dict(asset_info)
             for watch_id, weapon_id, name, asset_id, class_id, instance_id, count, last_count, last_check, wildcard in watches:
