@@ -1,4 +1,4 @@
-FROM docker.io/python:3.11.2-alpine3.16 AS builder
+FROM docker.io/python:3.11.2-alpine3.16
 
 RUN set -exu \
   && addgroup \
