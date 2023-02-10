@@ -1,0 +1,9 @@
+version: '2.4'
+
+services:
+  fragminder:
+    build: .
+    read_only: true
+    volumes:
+      - "./config.ini:/fragminder/config.ini:ro"
+      - "./data:/fragminder/data:rw"
