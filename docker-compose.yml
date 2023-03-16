@@ -3,12 +3,12 @@ version: '2.4'
 services:
   fragminder:
     image: ghcr.io/puffserver-rocks/fragminder:main
-    cpuset: "6-7"
+    build: .
     restart: unless-stopped
     read_only: true
     volumes:
-      - "./config.ini:/fragminder/config.ini:ro"
       - "./data:/fragminder/data:rw"
+      - "./config.ini:/fragminder/config.ini:ro"
     networks:
       - fragminder-internal
 
