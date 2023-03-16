@@ -1,3 +1,6 @@
+# persistent data
+data/*
+
 # sqlite databases
 *.sqlite
 

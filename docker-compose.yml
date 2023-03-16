@@ -1,0 +1,16 @@
+version: '2.4'
+
+services:
+  fragminder:
+    image: ghcr.io/puffserver-rocks/fragminder:main
+    build: .
+    restart: unless-stopped
+    volumes:
+      - "./data:/fragminder/data:rw"
+      - "./config.ini:/fragminder/config.ini:ro"
+    networks:
+      - fragminder-internal
+
+networks:
+  fragminder-internal:
+    driver: bridge
