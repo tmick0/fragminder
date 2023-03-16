@@ -2,8 +2,17 @@ version: '2.4'
 
 services:
   fragminder:
-    build: .
+    image:
+    cpuset: "6-7"
+    restart: unless-stopped
     read_only: true
     volumes:
       - "./config.ini:/fragminder/config.ini:ro"
       - "./data:/fragminder/data:rw"
+    networks:
+      - fragminder-internal
+
+
+networks:
+  fragminder-internal:
+    driver: bridge
